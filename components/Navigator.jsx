@@ -4,6 +4,7 @@ import Details from "../pages/Details";
 import NotFound from "../pages/NotFound";
 import UserAccount from "../pages/UserAccount";
 import UserDetails from "../pages/UserDetails";
+import UserLayout from '../pages/UserLayout';
 
 const Navigator = () => {
     return (

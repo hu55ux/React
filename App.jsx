@@ -2,7 +2,7 @@ import Navigator from './components/Navigator'
 
 const App = () => {
   return (
-    { Navigator }
+    <Navigator />
   )
 }
 
