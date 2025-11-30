@@ -1,4 +1,4 @@
-import Card from './components/Card'
+import Card from "../components/card.jsx";
 
 const App = () => {
 
@@ -278,7 +278,7 @@ const App = () => {
 
   return (
     <div className='w-full h-screen grid grid-cols-4 gap-5 p-5'>
-      {products.map(product => <Card product={product}/>)}
+      {products.map(product => <Card product={product} />)}
     </div>
   )
 }
