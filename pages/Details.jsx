@@ -1,31 +1,14 @@
-import React, { useEffect } from 'react'
-import { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import React from 'react'
+import { useParams } from 'react-router-dom';
 
 const Details = () => {
-    const [product, setProduct] = useState([]);
-    const location = useLocation();
-    const { id } = location.state;
+    const { id } = useParams();
 
-
-    const getProductDetails = async () => {
-        try {
-            const res = await fetch(`https://ilkinibadov.com/api/v1/products/${id}/details`);
-            if (res.ok) {
-                const data = await res.json();
-                setProduct(data);
-            }
-        } catch (error) {
-
-        }
-    }
-
-    useEffect(() => {
-        getProductDetails();
-    }, []);
 
     return (
-        <div>Details {id}</div>
+        <div className='w-full h-screen flex justify-center items-center'>
+            <h1 className='text-4xl font-bold'>You are in Details Page  {id}</h1>
+        </div>
     )
 }
 
