@@ -153,6 +153,86 @@ useEffect içərisində bu datanı göndərsək, o zaman hər dəfə searchterm 
  məlumatları gətirəcək.   afdakd
  
 
+
+
+
+
+                                                                                Navigation 
+
+Navigation (naviqasiya) React tətbiqlərində səhifələr arasında keçid etmək üçün istifadə olunan mexanizmdir.
+React Router - React Router React tətbiqlərində naviqasiya idarə etmək üçün istifadə olunan populyar kitabxanadır. O, tək səhifəli tətbiqlərdə müxtəlif səhifələr yaratmağa və idarə etməyə imkan verir.
+  İlk öncə Router istifadəsi üçün cmd-də npm install react-router-dom əmrini işlətməliyik.
+Daha sonra main.jsx faylında tətbiqi Router ilə əhatə edirik:
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom';
+
+import App from './App.jsx'
+import './index.css'
+createRoot(document.getElementById('root')).render(
+    <React.StrictMode>
+        <BrowserRouter>
+        <App />
+        </BrowserRouter>
+    </React.StrictMode>,
+)
+Daha sonra bir Navigator.jsx faylı yaradıb orada aşağıdakı kodu yazırıq:
+
+
+
+
+
+  import { Routes, Route } from 'react-router-dom';
+import Products from "../pages/Products";
+import Details from "../pages/Details";
+import NotFound from "../pages/NotFound";
+import UserAccount from "../pages/UserAccount";
+import UserDetails from "../pages/UserDetails";
+import UserLayout from '../pages/UserLayout';
+
+const Navigator = () => {
+    return (
+        <Routes>
+            <Route path="/" element={<Products />} />
+            <Route path="/details/:id" element={<Details />} />
+            <Route path='user' element={<UserLayout />}>
+                <Route path="/userAccount" element={<UserAccount />} />
+                <Route path="/userData" element={<UserDetails />} />
+            </Route>
+
+            <Route path="*" element={<NotFound />} />
+        </Routes>
+    );
+};
+
+
+export default Navigator;
+
+
+Məsəkən biz details səhifəsində bir id göndəririk ki, bu id-yə əsasən API-dən məlumatlar gətirək. bunun üçün Details.jsx faylında useParams hook-dan istifadə edirik:
+import { useParams } from 'react-router-dom';
+const { id } = useParams(); - bu sətirdə useParams hook-u vasitəsilə URL-dən göndərilən id-ni əldə edirik.
+
+const response = await fetch(`https://api.example.com/products/${id}`); - burada isə API-dən id-yə əsasən məlumatları gətiririk.
+const data = await response.json(); - gətirilən məlumatları JSON formatına çeviririk.
+return (
+    <div>
+        <h1>Product Details</h1>
+        <p>Product ID: {id}</p>
+        <p>Product Name: {data.name}</p>
+        <p>Product Description: {data.description}</p>
+    </div>
+)
+
+Və ya UseLocation hook-dan istifadə edərək URL-dən məlumatları əldə edə bilərik:
+
+import { useLocation } from 'react-router-dom';
+const location = useLocation();
+const queryParams = new URLSearchParams(location.search);
+const id = queryParams.get('id');
+
+
+
  
 
 
