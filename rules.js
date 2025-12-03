@@ -233,8 +233,236 @@ const id = queryParams.get('id');
 
 
 
- 
 
+
+props drilling - Props Drilling React-də bir komponentdən digərinə məlumat ötürmək üçün istifadə olunan üsuldur. O, valideyn komponentdən uşaq komponentə props vasitəsilə məlumat ötürülməsini əhatə edir.
+Amma bəzən bu üsul çox dərin komponent ağaclarında məlumat ötürülməsi lazım olduqda çətinlik yarada bilər. Buna görədə çox istifadə olunan yanaşma deyil.
+
+                                                        Global State Management
+
+Global State Management (Qlobal Dövlət İdarəetməsi) React tətbiqlərində müxtəlif komponentlər arasında məlumatların paylaşılmasını və idarə edilməsini asanlaşdıran bir yanaşmadır.
+Bu üsul istifadəsi zamanı məlumatlar mərkəzləşdirilmiş bir yerdə saxlanılır və müxtəlif komponentlər bu məlumatlara asanlıqla daxil ola bilirlər. Amma bütün datalar bu üsulla saxlanılmalı deyil.
+Bu yaxşı bir yanaşma deyil çünki hər bir komponent öz state-inə sahib olmalıdır və yalnız lazım olan məlumatlar qlobal state-də saxlanılmalıdır.
+
+Bu yanaşma üçündə biz zustand, redux və s. kimi kitabxanalardan istifadə edə bilərik. İndi gəlin zustand kitabxanasından istifadə edərək qlobal state idarə etməyə baxaq.
+İlk öncə terminalda npm install zustand əmrini işlədərək kitabxananı quraşdıraq.
+Məsələn :
+Dark mode, istifadəçi məlumatları və s. kimi məlumatlar qlobal state-də saxlanıla bilər. İndi gəlin code nümunəsinə baxaq.
+İlk öncə bir mode dəyişmə buttonu yaradaq:
+
+
+//  Daha sonra src folderində bir store qovluöu yaradırıq və daxilində darkModeStore.js faylını yaradırıq:
+
+import { create } from 'zustand'
+
+export const useDarkMode = create((set) => ({ // useDarkMode adlı bir custom hook yaradılır
+    isDarkModeActive: false, // isDarkModeActive adlı state dəyişəni yaradılır və ilkin dəyəri false olaraq təyin edilir
+    toggleDarkMode: () => set((state) => ({ // toggleDarkMode adlı bir funksiya yaradılır
+        isDarkModeActive: !state.isDarkModeActive // Bu funksiya çağırıldıqda isDarkModeActive dəyişəninin dəyərini tərsinə çevirir
+    }))
+}))
+
+// İndi isə rules.jsx faylında bu store-u istifadə edək:
+
+import React from 'react'
+import { useDarkMode } from '../store/darkModeStore';// darkModeStore-dan useDarkMode hook-u idxal edilir
+const Rules = () => {
+    const { isDarkModeActive, toggleDarkMode } = useDarkMode(); // useDarkMode hook-u vasitəsilə isDarkModeActive və toggleDarkMode əldə edilir
+    
+    return (
+        <div className={isDarkModeActive ? 'dark-mode' : 'light-mode'}> { isDarkModeActive dəyərinə əsasən div-in className-i təyin edilir  }
+        <button onClick={toggleDarkMode}> { button-a klik edildikdə toggleDarkMode funksiyası çağırılır }
+                Toggle Dark Mode
+            </button>
+        </div>
+    )
+}
+
+export default Rules
+
+
+
+Gördüyümüz kimi, useDarkMode hook-u vasitəsilə qlobal state-də saxlanılan isDarkModeActive dəyişəninə və toggleDarkMode funksiyasına daxil ola bilirik.
+Amma burada tək bir problem var ki buda bu hook-un müvəqqəti olmasıdır yəni səhifə refresh olunan zaman isDarkModeActive ilkin dəyəri olan false olur. Bu problemi həll etmək üçün biz zustand persist middleware-dən istifadə edə bilərik.
+İndi gəlin darkModeStore.js faylını persist ilə yenidən yazaq:
+
+
+
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+
+export const useDarkModePersist = create(persist(
+    (set) => ({
+        isDarkModeActive: false,
+        toggleDarkMode: () => set((state) => ({
+            isDarkModeActive: !state.isDarkModeActive
+        }))
+    }),
+    {
+        name: 'dark-mode-storage', // localStorage-də saxlanacaq məlumatların adı
+    }
+))
+
+
+İndi isə rules.jsx faylında bu yeni store-u istifadə edək:
+
+
+import React from 'react'
+import { useDarkModePersist } from '../store/darkModeStore';// darkModeStore-dan useDarkModePersist hook-u idxal edilir
+
+const RulesPersist = () => {
+    const { isDarkModeActive, toggleDarkMode } = useDarkModePersist(); // useDarkModePersist hook-u vasitəsilə isDarkModeActive və toggleDarkMode əldə edilir
+
+    return (
+        <div className={isDarkModeActive ? 'dark-mode' : 'light-mode'}> { isDarkModeActive dəyərinə əsasən div-in className-i təyin edilir  }
+            <button onClick={toggleDarkMode}> { button-a klik edildikdə toggleDarkMode funksiyası çağırılır }
+                Toggle Dark Mode
+            </button>
+        </div>
+    )
+}
+
+Burada persist istifadə edilərək isDarkModeActive dəyişəninin dəyəri localStorage-də saxlanılır və səhifə yeniləndikdə belə dəyər itmir.
+Buda qlobal state management-in bir nümunəsidir.
+
+
+
+İndi gəlin bunu daha fərqli bir nümunə ilə izah edək məsələn istifadəçi məlumatlarını qlobal state-də saxlayaq:
+
+
+
+import React from 'react'
+
+const Login = () => {
+    const [formdata, setFormdata] = React.useState({// burada formdata adlı state yaradılır və ilkin dəyəri obyekt şəklindədir
+        email: "",// email adlı property boş string olaraq təyin edilir
+        password: ""// password adlı property boş string olaraq təyin edilir
+    })
+
+    const handleInputChange = (title, value) => {
+        setFormdata(prevState => ({ // setFormdata funksiyası vasitəsilə formdata state-i yenilənir
+            ...prevState,// əvvəlki state-i saxlayırıq
+            [title]: value// daxil edilən title-a əsasən müvafiq property-nin dəyərini yeniləyirik
+        }))
+    }
+
+    const handleLogin = async () => {
+        try {
+            const response = await fetch("https://ilkinibadov.com/api/v1/auth/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+
+                },
+                body: JSON.stringify(formdata)
+            });
+            if (response.ok) {
+                const data = await response.json();
+                console.log("Login successful:", data);
+            }
+        } catch (error) {
+            console.log("Login error:", error);
+        }
+    }
+
+    return (
+        <div>
+            <input value={formdata.email} type='email' onChange={(e) => {
+                handleInputChange("email", e.target.value
+                )
+            }} />
+            <input value={formdata.password} type='password' onChange={(e) => {
+                handleInputChange("password", e.target.value
+                )
+            }} />
+            <button onClick={handleLogin}>Login</button>
+
+
+        </div>
+    )
+}
+
+export default Login
+
+
+Indi isə gəlin tokenləri saxlayaq və onlarla işləyək
+
+Ilk öncə tokenStore.js faylını yaradaq:
+*/
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+
+export const useTokens = create(persist(
+    (set) => ({
+        accesToken: "",
+        refreshToken: "",
+        setAccesToken: (token) => set((state) => ({ ...state, accesToken: token })),
+        setRefreshToken: (token) => set((state) => ({ ...state, refreshToken: token })),
+        clearTokens: () => set((state) => ({ ...state, accesToken: "", refreshToken: "" }))
+    }), { name: 'token-storage' }
+))
+
+// Indi bu hissəni login hissədə istifadə edək
+
+import React from 'react'
+const Login = () => {
+    const [formdata, setFormdata] = React.useState({// burada formdata adlı state yaradılır və ilkin dəyəri obyekt şəklindədir
+        email: "",// email adlı property boş string olaraq təyin edilir
+        password: ""// password adlı property boş string olaraq təyin edilir
+    })
+    const { setAccesToken, setRefreshToken } = useTokens(); // useTokens hook-u vasitəsilə setAccesToken və setRefreshToken funksiyaları əldə edilir
+
+    const handleInputChange = (title, value) => {
+        setFormdata(prevState => ({ // setFormdata funksiyası vasitəsilə formdata state-i yenilənir
+            ...prevState,// əvvəlki state-i saxlayırıq
+            [title]: value// daxil edilən title-a əsasən müvafiq property-nin dəyərini yeniləyirik
+        }))
+    }
+
+    const handleLogin = async () => {
+        try {
+            const response = await fetch("https://ilkinibadov.com/api/v1/auth/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+
+                },
+                body: JSON.stringify(formdata)
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setAccesToken(data.accessToken); // əldə olunan accessToken qlobal state-də saxlanılır
+                setRefreshToken(data.refreshToken); // əldə olunan refreshToken qlobal state-də saxlanılır
+            }
+        } catch (error) {
+            console.log("Login error:", error);
+        }
+    }
+
+    return (
+        <div>
+            <input value={formdata.email} type='email' onChange={(e) => {
+                handleInputChange("email", e.target.value
+                )
+            }} />
+            <input value={formdata.password} type='password' onChange={(e) => {
+                handleInputChange("password", e.target.value
+                )
+            }} />
+            <button onClick={handleLogin}>Login</button>
+
+
+        </div>
+    )
+}
+
+export default Login
+
+
+
+
+
+/*
 
 
 

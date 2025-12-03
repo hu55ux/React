@@ -6,6 +6,7 @@ import UserAccount from "../pages/UserAccount";
 import UserDetails from "../pages/UserDetails";
 import UserLayout from '../pages/UserLayout';
 
+
 const Navigator = () => {
     return (
         <Routes>
