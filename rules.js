@@ -388,7 +388,7 @@ export default Login
 Indi isə gəlin tokenləri saxlayaq və onlarla işləyək
 
 Ilk öncə tokenStore.js faylını yaradaq:
-*/
+
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
@@ -461,8 +461,133 @@ export default Login
 
 
 
+                                                                    Axios
 
-/*
+Axios - Axios JavaScript-də HTTP sorğuları göndərmək üçün istifadə olunan populyar bir kitabxanadır. O, Promise əsaslıdır və brauzer və Node.js mühitlərində işləyir.
+İlk öncə terminalda npm install axios əmrini işlədərək kitabxananı quraşdıraq.
+import axios from 'axios';
+
+Axios İnterceptorlardan ibarətdir ki 
+Interceptors - Interceptor-lar Axios-da sorğu və cavabları tutmaq və onları dəyişdirmək üçün istifadə olunan funksiyalardır. 
+Onlar sorğu göndərilməzdən əvvəl və cavab alınmazdan əvvəl işə düşürlər.
+
+ Request interceptoru - Sorğu göndərilməzdən əvvəl işə düşür və sorğu məlumatlarını dəyişdirmək üçün istifadə olunur.
+Response interceptoru - Cavab alınmazdan əvvəl işə düşür və cavab məlumatlarını dəyişdirmək üçün istifadə olunur.
+
+Axios code example:
+
+import axios from "axios";// Axios kitabxanası idxal edilir
+import { useTokens } from "../stores/tokenStore.js";// TokenStore-dan useTokens hook-u idxal edilir
+import { refreshTokens } from "./utils.js";// refreshTokens funksiyası idxal edilir
+
+const api = axios.create({// Axios instance yaradılır
+    baseURL: 'https://ilkinibadov.com/api/v1',// API-nin əsas URL-i təyin edilir
+    timeout: 10000,// Sorğu üçün vaxt limiti təyin edilir
+    headers: {// Ümumi başlıqlar təyin edilir
+        'Content-Type': 'application/json',// Məzmun növü JSON olaraq təyin edilir
+    }
+})
+
+api.interceptors.request.use(// Request interceptoru əlavə edilir
+    (config) => {// Sorğu konfiqurasiyası əldə edilir
+        const setLoading = useTokens.getState().setLoading// setLoading funksiyası əldə edilir
+        const accessToken = useTokens.getState().accessToken// accessToken əldə edilir
+        setLoading(true)// Yüklənmə vəziyyəti true olaraq təyin edilir
+        if (accessToken) {// accessToken mövcuddursa
+            config.headers.Authorization = `Bearer ${accessToken}`;// Authorization başlığına accessToken əlavə edilir
+        }
+        return config;// Konfiqurasiya qaytarılır
+    },
+    (error) => {
+        return Promise.reject(error);// Xəta baş verərsə, Promise rədd edilir
+    }
+)
+
+let isRefreshing = false;// Yenilənmə vəziyyəti təyin edilir
+let failedQueue = [];// Uğursuz sorğular üçün növbə yaradılır
+
+const processQueue = (error, token = null) => {// Növbəni işləyən funksiya yaradılır
+    failedQueue.forEach(prom => {// Növbədəki hər bir sorğu üçün
+        if (error) {// Xəta mövcuddursa
+            prom.reject(error); // Promise rədd edilir
+        } else {
+            prom.resolve(token);// Promise həll edilir
+        }
+    });
+    failedQueue = [];// Növbə təmizlənir
+}
+
+api.interceptors.response.use(// Response interceptoru əlavə edilir
+    (response) => {// Cavab əldə edilir
+        const setLoading = useTokens.getState().setLoading;// setLoading funksiyası əldə edilir
+        setLoading(false);// Yüklənmə vəziyyəti false olaraq təyin edilir
+        return response;// Cavab qaytarılır
+    },
+    async (error) => {// Xəta baş verərsə
+        const setLoading = useTokens.getState().setLoading// setLoading funksiyası əldə edilir
+        setLoading(false)// Yüklənmə vəziyyəti false olaraq təyin edilir
+        const clearTokens = useTokens.getState().clearTokens// clearTokens funksiyası əldə edilir
+        const originalRequest = error.config;// Orijinal sorğu konfiqurasiyası əldə edilir
+
+        if (error.response?.status === 401 && !originalRequest._retry) {// 401 xətası baş verərsə və orijinal sorğu təkrar edilməyibsə
+            originalRequest._retry = true;// Orijinal sorğu təkrar edilib kimi işarələnir
+
+            if (isRefreshing) {// Yenilənmə vəziyyəti true-dursa
+                return new Promise((resolve, reject) => {// Yeni Promise yaradılır
+                    failedQueue.push({ resolve, reject });// Uğursuz sorğu növbəyə əlavə edilir
+                }).then(token => {// Token əldə edildikdə
+                    originalRequest.headers.Authorization = 'Bearer ' + token; // Authorization başlığına token əlavə edilir
+                    return api(originalRequest);// Orijinal sorğu yenidən göndərilir
+                }).catch(err => {
+                    return Promise.reject(err);// Xəta baş verərsə, Promise rədd edilir
+                });
+            }
+
+            isRefreshing = true;// Yenilənmə vəziyyəti true olaraq təyin edilir
+
+            try {
+                const newToken = await refreshTokens();//refreshTokens funksiyası vasitəsilə yeni token əldə edilir
+                processQueue(null, newToken)
+                originalRequest.headers.Authorization = 'Bearer ' + newToken;// Authorization başlığına yeni token əlavə edilir
+                return api(originalRequest)// Orijinal sorğu yenidən göndərilir
+            } catch (error) {
+                processQueue(error, null);// Növbə işlənir və xəta ötürülür
+                clearTokens();// Tokenlər təmizlənir
+                return Promise.reject(error);// Xəta baş verərsə, Promise rədd edilir
+            }
+            finally {
+                isRefreshing = false;   
+            }
+        }
+        return Promise.reject(error);
+    }
+)
+
+export default api
+
+import axios from "axios"
+import { useTokens } from "../stores/tokenStore"
+
+export const refreshTokens = async () => {
+    try {
+        const refreshToken = useTokens.getState().refreshToken
+        const setAccessToken = useTokens.getState().setAccessToken
+        const { data, statusText } = await axios.post("https://ilkinibadov.com/api/v1/auth/refresh", { refreshToken })
+        if (statusText === "OK") {
+            setAccessToken(data.accessToken)
+            return data.accessToken
+        }
+    } catch (error) {
+        console.error(error)
+    }
+}
+
+
+
+
+
+
+
 
 
 
